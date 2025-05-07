@@ -18,7 +18,8 @@
         .button-container {
             display: flex;
             flex-direction: column;
-            gap: 10px; /* Расстояние между кнопками */
+            gap: 10px;
+            margin-bottom: 20px; /* Добавлено, чтобы кнопки не прилипали к карте */
         }
 
         button {
@@ -27,11 +28,11 @@
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            background-color: #4CAF50; /* Зеленый цвет кнопки */
+            background-color: #4CAF50;
             color: white;
         }
         button:hover {
-            background-color: #45a049; /* Более темный зеленый при наведении */
+            background-color: #45a049;
         }
 
         #ip-display {
@@ -40,13 +41,32 @@
             border: 1px solid #ccc;
             border-radius: 5px;
             background-color: #fff;
-            cursor: pointer; /* Добавляем курсор, чтобы было понятно, что можно кликнуть */
-            user-select: all; /* Позволяем выделять текст */
+            cursor: pointer;
+            user-select: all;
         }
 
         #server-status {
             margin-top: 10px;
             font-weight: bold;
+        }
+
+        #map-container {
+            width: 800px; /* Задайте желаемую ширину */
+            height: 600px; /* Задайте желаемую высоту */
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+
+        #map-iframe {
+            width: 100%;
+            height: 100%;
+            border: none; /* Убираем рамку у iFrame */
+        }
+
+        #loading-message {
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -54,12 +74,17 @@
 
     <div class="button-container">
         <button onclick="window.open('tg://resolve?domain=error_kill', '_blank')">Войти в тиму</button>
-        <button onclick="window.open('http://you-volkswagen.gl.at.ply.gg:19051', '_blank')">Онлайн карта</button>
     </div>
 
     <div id="ip-display" onclick="copyIP()">communications-pendant.gl.joinmc.link</div>
 
     <div id="server-status">Проверка статуса...</div>
+
+    <div id="map-container">
+        <iframe id="map-iframe" src="http://you-volkswagen.gl.at.ply.gg:19051"></iframe>
+    </div>
+
+    <div id="loading-message">Загрузка карты... Если карта не загружается, убедитесь, что ваш браузер не блокирует iFrame.</div>
 
 
     <script>
@@ -68,10 +93,20 @@
             alert("IP скопирован!");
         }
 
-        fetch('https://api.mcsrvstat.us/2/communications-pendant.gl.joinmc.link')
-            .then(response => response.json())
-            .then(data => {
-                const statusElement = document.getElementById('server-status');
+        async function checkServerStatus() {
+            const statusElement = document.getElementById('server-status');
+            const timeout = 5000; // 5 секунд
+
+            try {
+                const response = await Promise.race([
+                    fetch('https://api.mcsrvstat.us/2/communications-pendant.gl.joinmc.link'),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Timeout')), timeout)
+                    )
+                ]);
+
+                const data = await response.json();
+
                 if (data.online) {
                     statusElement.textContent = "Сервер онлайн";
                     statusElement.style.color = "green";
@@ -79,11 +114,14 @@
                     statusElement.textContent = "Сервер оффлайн";
                     statusElement.style.color = "red";
                 }
-            })
-            .catch(error => {
+            } catch (error) {
                 console.error("Ошибка проверки статуса сервера:", error);
-                document.getElementById('server-status').textContent = "Ошибка проверки статуса";
-            });
+                statusElement.textContent = "Ошибка проверки статуса";
+                statusElement.style.color = "red"; // Устанавливаем красный цвет при ошибке
+            }
+        }
+
+        checkServerStatus();
     </script>
 
 </body>
